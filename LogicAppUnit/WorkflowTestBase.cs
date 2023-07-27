@@ -110,6 +110,7 @@ namespace LogicAppUnit
             _workflowDefinition.ReplaceTriggersWithHttp();
             _workflowDefinition.ReplaceInvokeWorkflowActionsWithHttp();
             _workflowDefinition.ReplaceBuiltInConnectorActionsWithHttp(_testConfig.Workflow.BuiltInConnectorsToMock);
+            _workflowDefinition.ReplaceRuntimeConfigurationChunkedTransferWithNone();
 
             // Set up the local settings
             // The name of the local setting file can be set in the test configuration

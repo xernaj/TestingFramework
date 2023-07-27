@@ -214,5 +214,33 @@ namespace LogicAppUnit.Wrapper
                 });
             }
         }
+
+        /// <summary>
+        /// Update all actions that have runtimeConfiguration and use chunked transfer, then remove contentTransfer block so that mocked calls to Azure Blob, HTTP that contain large bodies etc. will not be chunked
+        /// </summary>
+        /// <remarks>
+        /// This will enable larger payloads >1kb that are chunked when in local development.
+        /// </remarks>
+        public void ReplaceRuntimeConfigurationChunkedTransferWithNone()
+        {
+            var chunkedActions = _jObjectWorkflow.SelectTokens("$..actions.*").Where(x => x["runtimeConfiguration"] != null && x["runtimeConfiguration"]["contentTransfer"] != null).Select(x => x["runtimeConfiguration"] as JObject).ToList();
+            if (chunkedActions.Count > 0)
+            {
+                Console.WriteLine($"Updating {chunkedActions.Count} actions to remove chunking:");
+
+                chunkedActions.ForEach(x => {
+                    if (x != null && x["contentTransfer"] != null) { // can be null when runtimeConfiguration is not used
+                        /*
+                        Remove any contentTransfer block to disable chunking
+                        "contentTransfer": {
+                            "transferMode": "Chunked"
+                        }
+                        */
+                        x.Remove("contentTransfer");
+                        Console.WriteLine($"    {((JProperty)x.Parent.Parent.Parent).Name}");
+                    }
+                });
+            }
+        }
     }
 }
