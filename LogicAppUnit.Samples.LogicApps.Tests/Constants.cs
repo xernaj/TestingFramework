@@ -17,5 +17,6 @@ namespace LogicAppUnit.Samples.LogicApps.Tests
         public static readonly string LOOP_WORKFLOW = "loop-workflow";
         public static readonly string MANAGED_API_CONNECTOR_WORKFLOW = "managed-api-connector-workflow";
         public static readonly string STATELESS_WORKFLOW = "stateless-workflow";
+        public static readonly string CHUNKED_TRANSFER_WORKFLOW = "chunked-transfer-workflow";
     }
 }
