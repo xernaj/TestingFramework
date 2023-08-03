@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Reflection;
+using System.IO;
 
 namespace LogicAppUnit.Samples.LogicApps.Tests.ChunkedTransferWorkflow
 {
@@ -34,11 +35,44 @@ namespace LogicAppUnit.Samples.LogicApps.Tests.ChunkedTransferWorkflow
         [TestMethod]
         public void ChunkedTransferWorkflow_When_HTTP_Action_Returns_Should_Be_Successful()
         {
+            int chunkSizeInBytes = 512;
+            string chunkEndpoint = Guid.NewGuid().ToString();
+            Stream requestStream = new MemoryStream();
+            
             // Override one of the settings in the local settings file
             var settingsToOverride = new Dictionary<string, string>() { { "ServiceTwo-DefaultAddressType", "physical" } };
 
             using (ITestRunner testRunner = CreateTestRunner(settingsToOverride))
             {
+                // mock chunking (some of it with fluent api)
+                testRunner
+                    .AddMockResponse(
+                        MockRequestMatcher.Create()
+                        .UsingPost()
+                        .WithPath(PathMatchType.Exact, "/api/v1.1/upload")
+                        .WithHeader("x-ms-transfer-mode", "chunked"))
+                    .RespondWith(
+                        MockResponseBuilder.Create()
+                        .WithSuccess()
+                        .WithHeader("Location", $"{MockTestWorkflowHostUri}/api/v1.1/{chunkEndpoint}")
+                        .WithHeader("x-ms-chunk-size", chunkSizeInBytes.ToString())
+                    );
+                    
+                // mock the rest of chunking with delegate api
+                testRunner.AddApiMocks = (request) => {
+                    HttpResponseMessage mockedResponse = new HttpResponseMessage();
+                    mockedResponse.RequestMessage = request;
+
+                    if (request.RequestUri.AbsolutePath == $"/api/v1.1/{chunkEndpoint}" && request.Method == HttpMethod.Patch) {
+                        // append content
+                        var content = request.Content.ReadAsByteArrayAsync().Result;
+                        requestStream.Write(content, 0, content.Length);
+                        var contentRange = request.Content.Headers.ContentRange;
+                        mockedResponse.StatusCode = HttpStatusCode.OK;
+                        mockedResponse.Headers.Add("Range", $"{contentRange.Unit}=0-{contentRange.To}");
+                    }
+                    return mockedResponse;
+                };
                 // Configure mock responses
                 testRunner
                     .AddMockResponse(
